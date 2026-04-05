@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+from __future__ import annotations
+import argparse, json, urllib.request, urllib.parse
+from pathlib import Path
+from datetime import datetime
+
+PREF = ['JavBus','JAV321','FANZA','MGStage','Tokyo-Hot','FC2PPVDB']
+
+def ts():
+    return datetime.now().strftime('%Y%m%d_%H%M%S')
+
+def api_get(base: str, token: str, path: str):
+    req = urllib.request.Request(base.rstrip('/') + path)
+    req.add_header('Authorization', f'Bearer {token}')
+    with urllib.request.urlopen(req, timeout=30) as r:
+        return json.loads(r.read().decode('utf-8','ignore'))
+
+def choose_best(results, target_number):
+    def sc(x):
+        s=0
+        num=(x.get('number') or '').upper()
+        iid=(x.get('id') or '').upper()
+        p=x.get('provider') or ''
+        if num == target_number: s += 120
+        if iid == target_number: s += 90
+        if target_number in num: s += 35
+        if target_number in iid: s += 25
+        if p in PREF: s += (len(PREF)-PREF.index(p))*10
+        if x.get('cover_url'): s += 8
+        if x.get('thumb_url'): s += 5
+        return s
+    if not results:
+        return None
+    return max(results, key=sc)
+
+def main():
+    ap=argparse.ArgumentParser()
+    ap.add_argument('--preflight', required=True)
+    ap.add_argument('--metatube', required=True)
+    ap.add_argument('--token', required=True)
+    ap.add_argument('--output', default='plans/')
+    args=ap.parse_args()
+
+    pre = json.loads(Path(args.preflight).read_text(encoding='utf-8'))
+    plan = {'items': [], 'skipped': [], 'summary': {}}
+
+    for t in pre.get('tasks', []):
+        number = t['chosen_number']
+        q = urllib.parse.quote(number)
+        try:
+            s = api_get(args.metatube, args.token, f'/v1/movies/search?q={q}')
+            rs = s.get('data') or []
+            best = choose_best(rs, number)
+            if not best:
+                plan['skipped'].append({'dir': t['dir'], 'reason': 'search无结果', 'number': number})
+                continue
+            provider = urllib.parse.quote(best['provider'], safe='')
+            mid = urllib.parse.quote(best['id'], safe='')
+            info = api_get(args.metatube, args.token, f'/v1/movies/{provider}/{mid}')
+            data = info.get('data') or {}
+            plan['items'].append({
+                'dir': t['dir'],
+                'videos': t['videos'],
+                'video_count': t['video_count'],
+                'number': number,
+                'selected': best,
+                'metadata': data,
+            })
+        except Exception as e:
+            plan['skipped'].append({'dir': t['dir'], 'reason': f'API失败: {e}', 'number': number})
+
+    plan['summary'] = {
+        'items': len(plan['items']),
+        'skipped': len(plan['skipped']),
+    }
+    out_dir=Path(args.output); out_dir.mkdir(parents=True, exist_ok=True)
+    out=out_dir/f'scrape_plan_{ts()}.json'
+    out.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding='utf-8')
+    print(str(out))
+    print(json.dumps(plan['summary'], ensure_ascii=False))
+
+if __name__ == '__main__':
+    main()
