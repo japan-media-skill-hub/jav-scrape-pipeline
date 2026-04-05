@@ -55,8 +55,8 @@ Agent 不需要逐字通读整份 `search_results`。
 ```bash
 .venv/bin/python active_skills/jav-scrape-pipeline/scripts/scrape_query_provider.py \
   --preflight "plans/scrape_preflight_*.json" \
-  --metatube "http://192.168.3.110:8090" \
-  --token "123456" \
+  --metatube "http://<METATUBE_HOST>:8090" \
+  --token "<METATUBE_TOKEN>" \
   --print-candidates \
   --output "plans/"
 ```
@@ -120,8 +120,8 @@ Agent 仅输出决策，不手写 provider_scrape_plan：
 ```bash
 .venv/bin/python active_skills/jav-scrape-pipeline/scripts/execute_provider_scrape_plan.py \
   --plan "plans/provider_scrape_plan_*.json" \
-  --metatube "http://192.168.3.110:8090" \
-  --token "123456" \
+  --metatube "http://<METATUBE_HOST>:8090" \
+  --token "<METATUBE_TOKEN>" \
   --rename-pattern "number2"
 ```
 

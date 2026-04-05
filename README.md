@@ -3,7 +3,7 @@
 该仓库用于发布 `jav-scrape-pipeline` 技能的开源版本。
 
 - Skill 目录：`skills/jav-scrape-pipeline`
-- 来源：`/home/base/javmanager/active_skills/jav-scrape-pipeline`
+- 来源：本地技能库 `active_skills/jav-scrape-pipeline`（已做公开化清理）
 
 ## Structure
 
